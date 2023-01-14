@@ -1,5 +1,3 @@
-using Cronos;
-
 namespace Janitor;
 
 /// <summary>
@@ -24,44 +22,4 @@ public record TaskInfo(string Name, Func<IServiceProvider, CancellationToken, Ta
     /// Gets or sets the current state of the task.
     /// </summary>
     public TaskState State { get; set; }
-}
-
-/// <summary>
-/// Provides a <see cref="TimeSpan"/> that represents the time wo wait until 
-/// the next execution of a task.
-/// </summary>
-public interface IWaitTime
-{
-    /// <summary>
-    /// Gets the <see cref="TimeSpan"/> that represents the time wo wait until 
-    /// the next execution of a task.
-    /// </summary>
-    /// <returns>The <see cref="TimeSpan"/> that represents the time wo wait until 
-    /// the next execution of a task.</returns>
-    TimeSpan? GetWaitTime();
-}
-
-/// <summary>
-/// An <see cref="IWaitTime"/> that uses a cron expression
-/// to calculate the time to wait before the next execution of a task.
-/// </summary>
-public class CronWaitTime : IWaitTime
-{
-    private readonly CronExpression _cronExpression;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CronWaitTime"/> class.
-    /// </summary>
-    /// <param name="cronExpression">The cron expression to be used to 
-    /// calculate the time to wait before the next execution of a task.</param>
-    public CronWaitTime(string cronExpression)
-        => _cronExpression = CronExpression.Parse(cronExpression);
-
-    /// <inheritdoc/>    
-    public TimeSpan? GetWaitTime()
-    {
-        DateTime utcNow = DateTime.UtcNow;
-        DateTime? nextOccurrence = _cronExpression.GetNextOccurrence(utcNow);
-        return nextOccurrence - utcNow;
-    }
 }
