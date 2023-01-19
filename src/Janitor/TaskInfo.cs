@@ -5,14 +5,10 @@ namespace Janitor;
 /// </summary>
 /// <param name="Name">The unique name of the task.</param>
 /// <param name="Task">The <see cref="Task"/> to be scheduled.</param>
-/// <param name="waitTime">The IWaitTime </param>
-public record TaskInfo(string Name, Func<IServiceProvider, CancellationToken, Task> Task, IWaitTime waitTime)
+/// <param name="scheduler">The IWaitTime </param>
+// public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task, Func<TaskInfo, CancellationToken, Task> StateHandler)
+public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task)
 {
-    /// <summary>
-    /// Gets or sets the scheduled task.
-    /// </summary>
-    public Task? ScheduledTask { get; set; }
-
     /// <summary>
     /// Gets or sets the <see cref="CancellationTokenSource"/> that is used to cancel the task.
     /// </summary>
@@ -21,5 +17,11 @@ public record TaskInfo(string Name, Func<IServiceProvider, CancellationToken, Ta
     /// <summary>
     /// Gets or sets the current state of the task.
     /// </summary>
-    public TaskState State { get; set; }
+    public TaskState State { get; private set; } = TaskState.StartRequested;
+
+    public async Task SetState(TaskState newState)
+    {
+        State = newState;
+        // await StateHandler(this, CancellationTokenSource!.Token);
+    }
 }

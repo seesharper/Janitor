@@ -5,11 +5,10 @@ namespace Janitor;
 /// </summary>
 public enum TaskState
 {
-
     /// <summary>
-    /// Task is about to be scheduled 
+    /// The task is requested to be started
     /// </summary>
-    ToBeScheduled,
+    StartRequested,
 
     /// <summary>
     /// The task is running/executing.
@@ -17,9 +16,9 @@ public enum TaskState
     Running,
 
     /// <summary>
-    /// The task is scheduled for execution
+    /// The task is started.
     /// </summary>
-    Scheduled,
+    Started,
 
     /// <summary>
     /// The task is paused.
@@ -37,7 +36,7 @@ public enum TaskState
     Stopped,
 
     /// <summary>
-    /// The process in in the process of being deleted.
+    /// The task is requested to be deleted
     /// </summary>
     DeleteRequested
 }
