@@ -7,6 +7,8 @@ namespace Janitor;
 
 
 
+
+
 public class TaskInfoBuilder<TDependency> where TDependency : notnull
 {
     private string _name;
@@ -15,10 +17,19 @@ public class TaskInfoBuilder<TDependency> where TDependency : notnull
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ITaskRunner> _logger;
 
+    private Delegate _stateHandler;
+
     public TaskInfoBuilder(IServiceProvider serviceProvider, ILogger<ITaskRunner> logger)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
+    }
+
+
+    public TaskInfoBuilder<TDependency> WithStateHandler(Delegate handler)
+    {
+        _stateHandler = handler;
+        return this;
     }
 
     public TaskInfoBuilder<TDependency> WithName(string name)
@@ -41,29 +52,18 @@ public class TaskInfoBuilder<TDependency> where TDependency : notnull
 
     public TaskInfo<TDependency> Build()
     {
+        if (_stateHandler is null)
+        {
+            _stateHandler = () => { return Task.CompletedTask; };
+        }
         var taskInfo = new TaskInfo<TDependency>();
         taskInfo.State = TaskState.StartRequested;
         taskInfo.TaskToBeScheduled = _taskToBeScheduled;
         taskInfo.Name = _name;
         taskInfo.ServiceProvider = _serviceProvider;
         taskInfo.Schedule = _schedule;
+        taskInfo.StateHandler = _stateHandler;
         return taskInfo;
-
-    }
-
-    private TimeSpan? GetWaitTime()
-    {
-        DateTime utcNow = DateTime.UtcNow;
-        DateTime? nextExecutionTime = _schedule.GetNext(utcNow);
-
-        if (nextExecutionTime is null)
-        {
-            return null;
-        }
-
-        TimeSpan waitTime = nextExecutionTime.Value - utcNow;
-        _logger.LogDebug($"Scheduled {_name} for execution at {nextExecutionTime} (UTC). Time to wait is {waitTime.Days} day(s), {waitTime.Hours} hour(s), {waitTime.Minutes} minute(s) and {waitTime.Seconds} second(s).");
-        return waitTime;
     }
 }
 
@@ -78,32 +78,11 @@ public class TaskRunner : ITaskRunner
     private readonly ILogger<TaskRunner> _logger;
     private TaskCompletionSource _restartCompletionSource = new();
 
-    private Func<TaskInfo, IServiceProvider, Task>? _stateChanged = null;
-
     public TaskRunner(IServiceProvider serviceProvider, ILogger<TaskRunner> logger)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
-
-    public ITaskRunner WithStateChangedHandler(Func<TaskInfo, IServiceProvider, Task> handler)
-    {
-        _stateChanged = handler;
-        return this;
-    }
-
-    // public ITaskRunner Schedule(string name, Func<CancellationToken, Task> task, ISchedule waitTime)
-    // {
-
-
-    //     Func<IServiceProvider, CancellationToken, Task> t = (sp, ct) => task(ct);
-    //     var scheduledTaskInfo = new TaskInfo(name, t, waitTime);
-    //     _scheduledTasks.AddOrUpdate(name, sti => scheduledTaskInfo, (n, sti) => sti);
-    //     _restartCompletionSource.SetResult();
-    //     return this;
-    // }
-
-
 
     public async Task Start(CancellationToken cancellationToken)
     {
@@ -177,13 +156,7 @@ public class TaskRunner : ITaskRunner
     public IEnumerator<ITaskInfo> GetEnumerator() => _scheduledTasks.Values.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => _scheduledTasks.Values.GetEnumerator();
 
-    private async Task ChangeState(TaskInfo taskInfo)
-    {
-        if (_stateChanged != null)
-        {
-            await _stateChanged(taskInfo, _serviceProvider);
-        }
-    }
+
 
     public ITaskRunner Schedule<TDependency>(Action<TaskInfoBuilder<TDependency>> configureBuilder) where TDependency : notnull
     {

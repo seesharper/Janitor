@@ -10,12 +10,16 @@ public interface ITaskInfo
     Task GetScheduledTask(ILogger<ITaskRunner> logger);
 
     Task SetState(TaskState newState);
+
+    Task Pause();
 }
 
 
 
 public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
 {
+
+    public Delegate StateHandler { get; set; }
 
     private Task _scheduledTask;
 
@@ -33,6 +37,18 @@ public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
 
     public async Task SetState(TaskState newState)
     {
+        var handlerParameters = StateHandler.Method.GetParameters();
+        List<object> args = new List<object>();
+        using (var scope = ServiceProvider.CreateScope())
+        {
+            foreach (var handlerParameter in handlerParameters)
+            {
+                var argument = scope.ServiceProvider.GetRequiredService(handlerParameter.ParameterType);
+                args.Add(argument);
+            }
+        }
+
+        await (Task)StateHandler.DynamicInvoke(args.ToArray());
 
     }
 
@@ -101,38 +117,40 @@ public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
         logger.LogDebug($"Scheduled {Name} for execution at {nextExecutionTime} (UTC). Time to wait is {waitTime.Days} day(s), {waitTime.Hours} hour(s), {waitTime.Minutes} minute(s) and {waitTime.Seconds} second(s).");
         return waitTime;
     }
-}
 
-
-
-
-
-
-/// <summary>
-/// Represents the task to be scheduled.
-/// </summary>
-/// <param name="Name">The unique name of the task.</param>
-/// <param name="Task">The <see cref="Task"/> to be scheduled.</param>
-/// <param name="scheduler">The IWaitTime </param>
-// public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task, Func<TaskInfo, CancellationToken, Task> StateHandler)
-public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task)
-{
-    /// <summary>
-    /// Gets or sets the <see cref="CancellationTokenSource"/> that is used to cancel the task.
-    /// </summary>
-    public CancellationTokenSource? CancellationTokenSource { get; set; }
-
-    /// <summary>
-    /// Gets or sets the current state of the task.
-    /// </summary>
-    public TaskState State { get; private set; } = TaskState.StartRequested;
-
-
-
-
-    public async Task SetState(TaskState newState)
+    public async Task Pause()
     {
-        State = newState;
-        // await StateHandler(this, CancellationTokenSource!.Token);
+        await SetState(TaskState.Paused);
     }
 }
+
+
+
+
+
+
+// /// <summary>
+// /// Represents the task to be scheduled.
+// /// </summary>
+// /// <param name="Name">The unique name of the task.</param>
+// /// <param name="Task">The <see cref="Task"/> to be scheduled.</param>
+// /// <param name="scheduler">The IWaitTime </param>
+// // public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task, Func<TaskInfo, CancellationToken, Task> StateHandler)
+// public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task)
+// {
+//     /// <summary>
+//     /// Gets or sets the <see cref="CancellationTokenSource"/> that is used to cancel the task.
+//     /// </summary>
+//     public CancellationTokenSource? CancellationTokenSource { get; set; }
+
+//     /// <summary>
+//     /// Gets or sets the current state of the task.
+//     /// </summary>
+//     public TaskState State { get; private set; } = TaskState.StartRequested;
+
+//     public async Task SetState(TaskState newState)
+//     {
+//         State = newState;
+//         // await StateHandler(this, CancellationTokenSource!.Token);
+//     }
+// }

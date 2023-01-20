@@ -46,6 +46,27 @@ public class SchedulerTests : IDisposable
         VerifyInvoked("Test");
     }
 
+    [Fact]
+    public async Task ShouldInvokeStateHandler()
+    {
+        await Task.Delay(200);
+        _taskRunner.Schedule<SampleDependency>(config =>
+        {
+            config
+                .WithName("Test")
+                .WithSchedule(new TestSchedule())
+                .WithScheduledTask(async (sampleDependenecy, ct) => SetInvocation("Test"))
+                .WithStateHandler(async (SampleDependency sampleDependency) => SetInvocation(sampleDependency.GetType().Name));
+
+        });
+        await Task.Delay(200);
+        await _taskRunner.Pause("Test");
+        await Task.Delay(200);
+
+        VerifyInvoked(typeof(SampleDependency).Name);
+    }
+
+
     // [Fact]
     // public async Task ShouldPauseAndResumeTask()
     // {
