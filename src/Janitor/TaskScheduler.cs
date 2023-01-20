@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Janitor;
 
 
+
 public class TaskInfoBuilder<TDependency> where TDependency : notnull
 {
     private string _name;
@@ -38,40 +39,16 @@ public class TaskInfoBuilder<TDependency> where TDependency : notnull
         return this;
     }
 
-    public TaskInfo Build()
+    public TaskInfo<TDependency> Build()
     {
-        Func<TaskInfo, CancellationToken, Task> scheduledTask = async (taskInfo, cancellationToken) =>
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                TimeSpan? waitTime = GetWaitTime();
+        var taskInfo = new TaskInfo<TDependency>();
+        taskInfo.State = TaskState.StartRequested;
+        taskInfo.TaskToBeScheduled = _taskToBeScheduled;
+        taskInfo.Name = _name;
+        taskInfo.ServiceProvider = _serviceProvider;
+        taskInfo.Schedule = _schedule;
+        return taskInfo;
 
-                try
-                {
-                    if (waitTime is not null)
-                    {
-                        await Task.Delay(waitTime.Value, cancellationToken);
-                        if (taskInfo.State == TaskState.Paused)
-                        {
-                            _logger.LogDebug($"Task `{taskInfo.Name}` is in a paused state. To resume the task, call `Resume{taskInfo.Name}`");
-                        }
-                        else
-                        {
-                            using (var containerScope = _serviceProvider.CreateScope())
-                            {
-                                var dependency = containerScope.ServiceProvider.GetRequiredService<TDependency>();
-                                await _taskToBeScheduled(dependency, cancellationToken);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to execute background task");
-                }
-            }
-        };
-        return new TaskInfo(_name, scheduledTask);
     }
 
     private TimeSpan? GetWaitTime()
@@ -96,7 +73,7 @@ public class TaskInfoBuilder<TDependency> where TDependency : notnull
 
 public class TaskRunner : ITaskRunner
 {
-    private readonly ConcurrentDictionary<string, TaskInfo> _scheduledTasks = new ConcurrentDictionary<string, TaskInfo>();
+    private readonly ConcurrentDictionary<string, ITaskInfo> _scheduledTasks = new ConcurrentDictionary<string, ITaskInfo>();
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TaskRunner> _logger;
     private TaskCompletionSource _restartCompletionSource = new();
@@ -138,14 +115,14 @@ public class TaskRunner : ITaskRunner
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            List<Task> existingTasks = _scheduledTasks.Values.Where(v => v.State is TaskState.Running || v.State == TaskState.Started || v.State == TaskState.Paused).Select(ti => ti.Task(ti, ti.CancellationTokenSource!.Token)).ToList();
-            List<TaskInfo> allNewTasks = new List<TaskInfo>();
+            List<Task> existingTasks = _scheduledTasks.Values.Where(v => v.State is TaskState.Running || v.State == TaskState.Started || v.State == TaskState.Paused).Select(ti => ti.GetScheduledTask(_logger)).ToList();
+            List<ITaskInfo> allNewTasks = new List<ITaskInfo>();
             var tasksToBeScheduled = _scheduledTasks.Values.Where(v => v.State is TaskState.StartRequested);
             _logger.LogInformation($"Creating main task with {tasksToBeScheduled.Count()} tasks.");
             foreach (var scheduledTaskInfo in tasksToBeScheduled)
             {
-                scheduledTaskInfo.CancellationTokenSource = new CancellationTokenSource();
                 await scheduledTaskInfo.SetState(TaskState.Started);
+                existingTasks.Add(scheduledTaskInfo.GetScheduledTask(_logger));
                 allNewTasks.Add(scheduledTaskInfo);
             }
 
@@ -159,7 +136,7 @@ public class TaskRunner : ITaskRunner
     public async Task StopTask(string name)
     {
         await _scheduledTasks[name].SetState(TaskState.StopRequested);
-        _scheduledTasks[name].CancellationTokenSource!.Cancel();
+        // _scheduledTasks[name].CancellationTokenSource!.Cancel();
     }
 
     public async Task Pause(string taskName)
@@ -192,13 +169,12 @@ public class TaskRunner : ITaskRunner
     public async Task Stop(string taskName)
     {
         _logger.LogDebug($"Requesting task `{taskName}` to be stopped");
-        _scheduledTasks[taskName].SetState(TaskState.StopRequested);
-        _scheduledTasks[taskName].CancellationTokenSource.Cancel();
-        await ChangeState(_scheduledTasks[taskName]);
+        await _scheduledTasks[taskName].SetState(TaskState.StopRequested);
+        // _scheduledTasks[taskName].CancellationTokenSource.Cancel();        
     }
 
 
-    public IEnumerator<TaskInfo> GetEnumerator() => _scheduledTasks.Values.GetEnumerator();
+    public IEnumerator<ITaskInfo> GetEnumerator() => _scheduledTasks.Values.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => _scheduledTasks.Values.GetEnumerator();
 
     private async Task ChangeState(TaskInfo taskInfo)

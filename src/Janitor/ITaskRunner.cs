@@ -3,7 +3,7 @@ namespace Janitor;
 /// <summary>
 /// Manages schedules tasks.
 /// </summary>
-public interface ITaskRunner : IEnumerable<TaskInfo>
+public interface ITaskRunner : IEnumerable<ITaskInfo>
 {
     /// <summary>
     /// Starts the scheduler and returns a task that represents awaiting all tasks. 

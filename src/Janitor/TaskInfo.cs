@@ -1,4 +1,112 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
 namespace Janitor;
+
+public interface ITaskInfo
+{
+    TaskState State { get; set; }
+
+    Task GetScheduledTask(ILogger<ITaskRunner> logger);
+
+    Task SetState(TaskState newState);
+}
+
+
+
+public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
+{
+
+    private Task _scheduledTask;
+
+    public string Name { get; set; }
+
+    public Func<TDependency, CancellationToken, Task> TaskToBeScheduled { get; set; }
+
+    public CancellationTokenSource CancellationTokenSource { get; set; }
+
+    public ISchedule Schedule { get; set; }
+
+    public TaskState State { get; set; } = TaskState.StartRequested;
+
+    public IServiceProvider ServiceProvider { get; set; }
+
+    public async Task SetState(TaskState newState)
+    {
+
+    }
+
+    public Task GetScheduledTask(ILogger<ITaskRunner> logger)
+    {
+        if (_scheduledTask is null)
+        {
+            _scheduledTask = CreateScheduledTask(logger);
+        }
+
+        return _scheduledTask;
+    }
+
+
+    private async Task CreateScheduledTask(ILogger<ITaskRunner> logger)
+    {
+        this.CancellationTokenSource = new CancellationTokenSource();
+        while (!CancellationTokenSource.Token.IsCancellationRequested)
+        {
+            TimeSpan? waitTime = GetWaitTime(logger);
+
+            try
+            {
+                if (waitTime is not null)
+                {
+                    await Task.Delay(waitTime.Value, CancellationTokenSource.Token);
+                    if (State == TaskState.Paused)
+                    {
+                        logger.LogDebug($"Task `{Name}` is in a paused state. To resume the task, call `Resume{Name}`");
+                    }
+                    else
+                    {
+                        using (var containerScope = ServiceProvider.CreateScope())
+                        {
+                            var dependency = containerScope.ServiceProvider.GetRequiredService<TDependency>();
+                            await TaskToBeScheduled(dependency, CancellationTokenSource.Token);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to execute background task");
+            }
+        }
+        //};
+        // if (taskInfo.State == TaskState.StopRequested)
+        // {
+        //     _logger.LogDebug("Stop is requested");
+        //     taskInfo.State = TaskState.Stopped;
+        //     _restartCompletionSource.SetResult();
+        // }
+    }
+
+    private TimeSpan? GetWaitTime(ILogger<ITaskRunner> logger)
+    {
+        DateTime utcNow = DateTime.UtcNow;
+        DateTime? nextExecutionTime = Schedule.GetNext(utcNow);
+
+        if (nextExecutionTime is null)
+        {
+            return null;
+        }
+
+        TimeSpan waitTime = nextExecutionTime.Value - utcNow;
+        logger.LogDebug($"Scheduled {Name} for execution at {nextExecutionTime} (UTC). Time to wait is {waitTime.Days} day(s), {waitTime.Hours} hour(s), {waitTime.Minutes} minute(s) and {waitTime.Seconds} second(s).");
+        return waitTime;
+    }
+}
+
+
+
+
+
 
 /// <summary>
 /// Represents the task to be scheduled.
@@ -18,6 +126,9 @@ public record TaskInfo(string Name, Func<TaskInfo, CancellationToken, Task> Task
     /// Gets or sets the current state of the task.
     /// </summary>
     public TaskState State { get; private set; } = TaskState.StartRequested;
+
+
+
 
     public async Task SetState(TaskState newState)
     {
