@@ -42,7 +42,7 @@ public interface ITaskRunner : IEnumerable<ITaskInfo>
     /// <param name="taskName">The name the task to be stopped.</param>
     Task Stop(string taskName);
 
-    ITaskRunner Schedule<TDependency>(Action<TaskInfoBuilder<TDependency>> configureBuilder) where TDependency : notnull;
+    ITaskRunner Schedule(Action<TaskInfoBuilder> configureBuilder);
 
 
     // /// <summary>

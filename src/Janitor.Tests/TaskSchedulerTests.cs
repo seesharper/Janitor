@@ -35,12 +35,12 @@ public class SchedulerTests : IDisposable
     public async Task ShouldInvokeScheduledTask()
     {
         await Task.Delay(200);
-        _taskRunner.Schedule<SampleDependency>(config =>
+        _taskRunner.Schedule(config =>
         {
             config
                 .WithName("Test")
                 .WithSchedule(new TestSchedule())
-                .WithScheduledTask(async (sampleDependency, ct) => SetInvocation("Test"));
+                .WithScheduledTask(async (SampleDependency sampleDependency, CancellationToken ct) => SetInvocation("Test"));
         });
         await Task.Delay(200);
         VerifyInvoked("Test");
@@ -50,12 +50,12 @@ public class SchedulerTests : IDisposable
     public async Task ShouldInvokeStateHandler()
     {
         await Task.Delay(200);
-        _taskRunner.Schedule<SampleDependency>(config =>
+        _taskRunner.Schedule(config =>
         {
             config
                 .WithName("Test")
                 .WithSchedule(new TestSchedule())
-                .WithScheduledTask(async (sampleDependenecy, ct) => SetInvocation("Test"))
+                .WithScheduledTask(async (SampleDependency sampleDependency, CancellationToken ct) => SetInvocation("Test"))
                 .WithStateHandler(async (SampleDependency sampleDependency) => SetInvocation(sampleDependency.GetType().Name));
 
         });

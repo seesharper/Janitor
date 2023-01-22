@@ -14,9 +14,9 @@ public interface ITaskInfo
     Task Pause();
 }
 
- 
 
-public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
+
+public class TaskInfo : ITaskInfo
 {
 
     public Delegate StateHandler { get; set; }
@@ -25,7 +25,7 @@ public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
 
     public string Name { get; set; }
 
-    public Func<TDependency, CancellationToken, Task> TaskToBeScheduled { get; set; }
+    public Delegate TaskToBeScheduled { get; set; }
 
     public CancellationTokenSource CancellationTokenSource { get; set; }
 
@@ -95,10 +95,29 @@ public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
                     }
                     else
                     {
+                        var handlerParameters = TaskToBeScheduled.Method.GetParameters();
+                        List<object> args = new List<object>();
+
                         using (var containerScope = ServiceProvider.CreateScope())
                         {
-                            var dependency = containerScope.ServiceProvider.GetRequiredService<TDependency>();
-                            await TaskToBeScheduled(dependency, CancellationTokenSource.Token);
+                            foreach (var handlerParameter in handlerParameters)
+                            {
+                                if (handlerParameter.ParameterType == typeof(CancellationToken))
+                                {
+                                    args.Add(CancellationTokenSource.Token);
+                                }
+                                else
+                                {
+                                    var argument = containerScope.ServiceProvider.GetRequiredService(handlerParameter.ParameterType);
+                                    args.Add(argument);
+                                }
+
+                            }
+
+
+
+
+                            await (Task)TaskToBeScheduled.DynamicInvoke(args.ToArray());
                         }
                     }
                 }

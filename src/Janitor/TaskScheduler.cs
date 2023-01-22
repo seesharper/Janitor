@@ -9,10 +9,10 @@ namespace Janitor;
 
 
 
-public class TaskInfoBuilder<TDependency> where TDependency : notnull
+public class TaskInfoBuilder
 {
     private string _name;
-    private Func<TDependency, CancellationToken, Task> _taskToBeScheduled;
+    private Delegate _taskToBeScheduled;
     private ISchedule _schedule;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ITaskRunner> _logger;
@@ -26,37 +26,37 @@ public class TaskInfoBuilder<TDependency> where TDependency : notnull
     }
 
 
-    public TaskInfoBuilder<TDependency> WithStateHandler(Delegate handler)
+    public TaskInfoBuilder WithStateHandler(Delegate handler)
     {
         _stateHandler = handler;
         return this;
     }
 
-    public TaskInfoBuilder<TDependency> WithName(string name)
+    public TaskInfoBuilder WithName(string name)
     {
         _name = name;
         return this;
     }
 
-    public TaskInfoBuilder<TDependency> WithSchedule(ISchedule schedule)
+    public TaskInfoBuilder WithSchedule(ISchedule schedule)
     {
         _schedule = schedule;
         return this;
     }
 
-    public TaskInfoBuilder<TDependency> WithScheduledTask(Func<TDependency, CancellationToken, Task> task)
+    public TaskInfoBuilder WithScheduledTask(Delegate taskHandler)
     {
-        _taskToBeScheduled = task;
+        _taskToBeScheduled = taskHandler;
         return this;
     }
 
-    public TaskInfo<TDependency> Build()
+    public TaskInfo Build()
     {
         if (_stateHandler is null)
         {
             _stateHandler = () => { return Task.CompletedTask; };
         }
-        var taskInfo = new TaskInfo<TDependency>();
+        var taskInfo = new TaskInfo();
         taskInfo.State = TaskState.StartRequested;
         taskInfo.TaskToBeScheduled = _taskToBeScheduled;
         taskInfo.Name = _name;
@@ -158,9 +158,9 @@ public class TaskRunner : ITaskRunner
 
 
 
-    public ITaskRunner Schedule<TDependency>(Action<TaskInfoBuilder<TDependency>> configureBuilder) where TDependency : notnull
+    public ITaskRunner Schedule(Action<TaskInfoBuilder> configureBuilder) 
     {
-        var taskInfoBuilder = new TaskInfoBuilder<TDependency>(_serviceProvider, _logger);
+        var taskInfoBuilder = new TaskInfoBuilder(_serviceProvider, _logger);
         configureBuilder(taskInfoBuilder);
         var taskInfo = taskInfoBuilder.Build();
         _scheduledTasks.AddOrUpdate(taskInfo.Name, n => taskInfo, (n, t) => taskInfo);
