@@ -6,7 +6,8 @@ Janitor is a simple background task runner that allows tasks to be scheduled for
 
 ## Why 
 
-One example is hosted services in Asp.Net apps. 
+While established framework exists such as Quartz and Hangfire, sometimes we need something simple that
+don't bring a along to much baggage. Janitor has no database persistence or advanced features. It is just a task scheduler. No fuzz , nothing advanced. 
 
 ## Example 
 
@@ -25,7 +26,7 @@ All tasks are executed within their own container scope.
 ```csharp
 serviceCollection.AddJanitor((sp, config) =>
 {
-    config.Schedule<IDbConnection>("MyTask", async (dbConnection, cancellationToken) =>
+    config.Schedule("MyTask", async (IDbConnection dbConnection, cancellationToken) =>
         Console.Out.WriteLineAsync("Hello from MyTask", cancellationToken)
     , Schedule.At(DateTime.UtcNow.AddHours(1)));         
 });

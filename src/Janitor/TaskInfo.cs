@@ -14,7 +14,7 @@ public interface ITaskInfo
     Task Pause();
 }
 
-
+ 
 
 public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
 {
@@ -37,6 +37,21 @@ public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
 
     public async Task SetState(TaskState newState)
     {
+        State = newState;
+        try
+        {
+            await InvokeStateHandler();
+        }
+        catch (System.Exception ex)
+        {
+
+            //TODO 
+        }
+
+    }
+
+    private async Task InvokeStateHandler()
+    {
         var handlerParameters = StateHandler.Method.GetParameters();
         List<object> args = new List<object>();
         using (var scope = ServiceProvider.CreateScope())
@@ -49,7 +64,6 @@ public class TaskInfo<TDependency> : ITaskInfo where TDependency : notnull
         }
 
         await (Task)StateHandler.DynamicInvoke(args.ToArray());
-
     }
 
     public Task GetScheduledTask(ILogger<ITaskRunner> logger)

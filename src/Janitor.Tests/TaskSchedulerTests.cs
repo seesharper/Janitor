@@ -40,7 +40,7 @@ public class SchedulerTests : IDisposable
             config
                 .WithName("Test")
                 .WithSchedule(new TestSchedule())
-                .WithScheduledTask(async (sampleDependenecy, ct) => SetInvocation("Test"));
+                .WithScheduledTask(async (sampleDependency, ct) => SetInvocation("Test"));
         });
         await Task.Delay(200);
         VerifyInvoked("Test");
