@@ -8,17 +8,17 @@ public enum TaskState
     /// <summary>
     /// The task is requested to be started
     /// </summary>
-    StartRequested,
+    ScheduleRequested,
+
+    /// <summary>
+    /// The task is started.
+    /// </summary>
+    Scheduled,
 
     /// <summary>
     /// The task is running/executing.
     /// </summary>
     Running,
-
-    /// <summary>
-    /// The task is started.
-    /// </summary>
-    Started,
 
     /// <summary>
     /// The task is paused.
@@ -38,5 +38,15 @@ public enum TaskState
     /// <summary>
     /// The task is requested to be deleted
     /// </summary>
-    DeleteRequested
+    DeleteRequested,
+
+    /// <summary>
+    /// The task was deleted
+    /// </summary>
+    Deleted,
+
+    /// <summary>
+    /// The task has failed to execute.
+    /// </summary>
+    Failed
 }

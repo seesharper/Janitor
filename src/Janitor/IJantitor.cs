@@ -3,7 +3,7 @@ namespace Janitor;
 /// <summary>
 /// Manages schedules tasks.
 /// </summary>
-public interface ITaskRunner : IEnumerable<ITaskInfo>
+public interface IJanitor : IEnumerable<ScheduledTask>
 {
     /// <summary>
     /// Starts the scheduler and returns a task that represents awaiting all tasks. 
@@ -42,25 +42,10 @@ public interface ITaskRunner : IEnumerable<ITaskInfo>
     /// <param name="taskName">The name the task to be stopped.</param>
     Task Stop(string taskName);
 
-    ITaskRunner Schedule(Action<TaskInfoBuilder> configureBuilder);
-
-
-    // /// <summary>
-    // /// Adds a new scheduled <paramref name="task"/>.    
-    // /// </summary>
-    // /// <param name="name">The unique name of the task to b scheduled.</param>
-    // /// <param name="task">The <see cref="Task"/> representing the scheduled task.</param>
-    // /// <param name="waitTime">The <see cref="ISchedule"/> that represents the time to wait before executing the task.</param>
-    // /// <returns><see cref="ITaskRunner"/></returns>
-    // ITaskRunner Schedule(string name, Func<CancellationToken, Task> task, ISchedule waitTime);
-
-    // /// <summary>
-    // /// Adds a new scheduled <paramref name="task"/> providing the <see cref="IServiceProvider"/>
-    // /// as part of the <paramref name="task"/> function.
-    // /// </summary>
-    // /// <param name="name">The unique name of the task to b scheduled.</param>
-    // /// <param name="task">The <see cref="Task"/> representing the scheduled task.</param>
-    // /// <param name="waitTime">The <see cref="ISchedule"/> that represents the time to wait before executing the task.</param>
-    // /// <returns><see cref="ITaskRunner"/></returns>
-    // ITaskRunner Schedule<TDependency>(string name, Func<TDependency, CancellationToken, Task> task, ISchedule waitTime);
+    /// <summary>
+    /// Schedules a new task.
+    /// </summary>
+    /// <param name="configureBuilder"></param>
+    /// <returns></returns>
+    IJanitor Schedule(Action<ScheduledTaskBuilder> configureBuilder);
 }

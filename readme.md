@@ -1,5 +1,9 @@
 # Janitor
 
+The Janitor 
+
+
+
 ## What is it? 
 
 Janitor is a simple background task runner that allows tasks to be scheduled for execution.
@@ -9,28 +13,76 @@ Janitor is a simple background task runner that allows tasks to be scheduled for
 While established framework exists such as Quartz and Hangfire, sometimes we need something simple that
 don't bring a along to much baggage. Janitor has no database persistence or advanced features. It is just a task scheduler. No fuzz , nothing advanced. 
 
-## Example 
+Say that we have some arbitrary code like this 
 
 ```csharp
-serviceCollection.AddJanitor((sp, config) =>
+public async Task SendEMailToValuedCustomers(CancellationToken ct)
 {
-    config.Schedule("MyTask", async (cancellationToken) =>
-        Console.Out.WriteLineAsync("Hello from MyTask", cancellationToken)
-    , Schedule.At(DateTime.UtcNow.AddHours(1)));         
-});
+    // Code that send Emails here ...... 
+}  
 ```
 
-All tasks are executed within their own container scope.
+Say that we would want to execute `SendEMailToValuedCustomers` 
 
+The following code will schedule the method to execute in 60 seconds.
 
 ```csharp
-serviceCollection.AddJanitor((sp, config) =>
-{
-    config.Schedule("MyTask", async (IDbConnection dbConnection, cancellationToken) =>
-        Console.Out.WriteLineAsync("Hello from MyTask", cancellationToken)
-    , Schedule.At(DateTime.UtcNow.AddHours(1)));         
-});
+_taskRunner.Schedule(config =>
+	config
+        .WithName(TestTaskName)
+        .WithSchedule(new RunOnceSchedule(DateTime.UtcNow.AddSeconds(60)))
+        .WithScheduledTask(async (CancellationToken ct) => await SendEMailToValuedCustomers()));          
 ```
+
+## Schedule 
+
+The Janitor uses an `ISchedule` to determine the date and time for the next execution of the task.
+
+```csharp
+public interface ISchedule
+{    
+    DateTime? GetNext(DateTime utcNow);
+}
+```
+
+The purpose of `ISchedule` is to provide the `DateTime` for the next execution based upon the current `DateTime(UTC)`
+If the `GetNext` method return `null` or a point on time that has already passed the scheduled task will be removed from the Janitor.
+As long as we provide a `DateTime` representing some time in the future, the Janitor will schedule it for execution.
+
+This means that we can implement an `ISchedule` that continuously just keeps giving back a new date based on for instance a cron expression.
+
+```csharp
+public class CronSchedule : ISchedule
+{
+    private readonly CronExpression _cronExpression;
+    
+    public CronSchedule(string cronExpression)
+        => _cronExpression = CronExpression.Parse(cronExpression);
+ 
+    public DateTime? GetNext(DateTime utcNow)
+        => _cronExpression.GetNextOccurrence(utcNow);
+}
+```
+
+> Note: The code above uses the [Cronos](https://github.com/HangfireIO/Cronos) library 
+
+So say that we wanted to execute `SendEMailToValuedCustomers` every monday at 2PM. 
+
+```csharp
+_taskRunner.Schedule(config =>
+	config
+        .WithName(TestTaskName)
+        .WithSchedule(new CronSchedule("0 14 * * 1"))
+        .WithScheduledTask(async (CancellationToken ct) => await SendEMailToValuedCustomers()));  
+```
+
+> We used [crontab guru](https://crontab.guru/) to generate the cron expression. 
+
+
+
+## Dependency Injection 
+
+Say something about injecting dependencies into handlers
 
 ## Handling state change
 
@@ -62,30 +114,7 @@ serviceCollection.AddJanitor((sp, config) =>
 
 
 
-> Note: It is very important that we pass along the `CancellationToken` since that is how we stop/cancel tasks.
-
-Example with cron expression 
-
-```csharp
-serviceCollection.AddJanitor((sp, config) =>
-{
-    config.Schedule("MyTask", async (cancellationToken) =>
-        Console.Out.WriteLineAsync("Hello from MyTask", cancellationToken)
-    , Schedule.FromCronExpression("*/1 * * * *"));         
-});
-```
+> 
 
 
-
-
-## Scheduling tasks 
-
-The `IScheduler` is what we use for scheduling a task. It has one purpose and that is to return the DateTime(UTC) for 
-the next execution of the task. If it returns `NULL` or a DateTime that has already passed, the task will be removed and would have to be rescheduled in order for it to be executed again. 
-
-The following schedulers comes out of the box
-
-* CronScheduler - Returns the next execution occurrence using a cron expression.
-* RunOnceScheduler - Runs the scheduled task only once at a given DateTime(UTC) and then removes the task.
-  
 
