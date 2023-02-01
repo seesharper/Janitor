@@ -107,6 +107,7 @@ public class Janitor : IJanitor
 
 
 
+    /// <inheritdoc />
     public IJanitor Schedule(Action<ScheduledTaskBuilder> configureBuilder)
     {
         var taskInfoBuilder = new ScheduledTaskBuilder(_serviceProvider, _logger);
@@ -116,4 +117,7 @@ public class Janitor : IJanitor
         _restartCompletionSource.SetResult();
         return this;
     }
+
+    /// <inheritdoc />
+    public async Task Run(string taskName) => await _scheduledTasks[taskName].Run();
 }

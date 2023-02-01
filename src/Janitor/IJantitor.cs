@@ -48,4 +48,12 @@ public interface IJanitor : IEnumerable<ScheduledTask>
     /// <param name="configureBuilder"></param>
     /// <returns></returns>
     IJanitor Schedule(Action<ScheduledTaskBuilder> configureBuilder);
+
+    /// <summary>
+    /// Runs the task with the given <paramref name="taskName"/> without waiting for its schedule.
+    /// Useful for testing scheduled tasks
+    /// </summary>
+    /// <param name="taskName">The name of the task to run.</param>
+    /// <returns></returns>
+    Task Run(string taskName);
 }

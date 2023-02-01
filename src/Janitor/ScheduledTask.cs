@@ -107,27 +107,7 @@ public class ScheduledTask
                     }
                     else
                     {
-                        var handlerParameters = _taskToBeScheduled.Method.GetParameters();
-                        List<object> args = new List<object>();
-                        using (var containerScope = _serviceProvider.CreateScope())
-                        {
-                            foreach (var handlerParameter in handlerParameters)
-                            {
-                                if (handlerParameter.ParameterType == typeof(CancellationToken))
-                                {
-                                    args.Add(_cancellationTokenSource.Token);
-                                }
-                                else
-                                {
-                                    var argument = containerScope.ServiceProvider.GetRequiredService(handlerParameter.ParameterType);
-                                    args.Add(argument);
-                                }
-
-                            }
-                            await SetState(TaskState.Running);
-                            await (Task)_taskToBeScheduled.DynamicInvoke(args.ToArray())!;
-                            await SetState(TaskState.Scheduled);
-                        }
+                        await Run(_cancellationTokenSource.Token);
                     }
                 }
                 else
@@ -156,6 +136,31 @@ public class ScheduledTask
                 _logger.LogError(ex, "Failed to execute background task '{taskName}'", Name);
                 await SetState(TaskState.Failed, ex);
             }
+        }
+    }
+
+    public async Task Run(CancellationToken cancellationToken = default)
+    {
+        var handlerParameters = _taskToBeScheduled.Method.GetParameters();
+        List<object> args = new List<object>();
+        using (var containerScope = _serviceProvider.CreateScope())
+        {
+            foreach (var handlerParameter in handlerParameters)
+            {
+                if (handlerParameter.ParameterType == typeof(CancellationToken))
+                {
+                    args.Add(cancellationToken);
+                }
+                else
+                {
+                    var argument = containerScope.ServiceProvider.GetRequiredService(handlerParameter.ParameterType);
+                    args.Add(argument);
+                }
+
+            }
+            await SetState(TaskState.Running);
+            await (Task)_taskToBeScheduled.DynamicInvoke(args.ToArray())!;
+            await SetState(TaskState.Scheduled);
         }
     }
 

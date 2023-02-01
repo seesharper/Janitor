@@ -303,6 +303,22 @@ public class SchedulerTests : IDisposable
         ((IEnumerable)_taskRunner).GetEnumerator().Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task ShouldRunTask()
+    {
+        await WaitAWhile();
+        _taskRunner.Schedule(config =>
+        {
+            config
+                .WithName(TestTaskName)
+                .WithSchedule(new RunOnceSchedule(DateTime.UtcNow.AddYears(1)))
+                .WithScheduledTask(async (SampleDependency sampleDependency, CancellationToken ct) => SetInvocation(TestTaskName));
+        });
+        await _taskRunner.Run(TestTaskName);
+
+        VerifyInvoked(TestTaskName);
+    }
+
 
     private void SetInvocation(string name) => _invocationMap[name] = true;
 
