@@ -319,6 +319,28 @@ public class SchedulerTests : IDisposable
         VerifyInvoked(TestTaskName);
     }
 
+    [Fact]
+    public async Task ShouldHandleAddingMultipleTasks()
+    {
+        _taskRunner
+        .Schedule(builder =>
+        {
+            builder
+                .WithName("First")
+                .WithSchedule(new TestSchedule())
+                .WithScheduledTask(async () => SetInvocation("First"));
+
+        })
+        .Schedule(builder =>
+        {
+            builder
+                .WithName("Second")
+                .WithSchedule(new TestSchedule())
+                .WithScheduledTask(async () => SetInvocation("Second"));
+
+        });
+    }
+
 
     private void SetInvocation(string name) => _invocationMap[name] = true;
 

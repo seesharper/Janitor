@@ -29,6 +29,8 @@ public class ScheduledTask
 
     public TaskState State { get; private set; }
 
+    public DateTime? NextOccurrence { get; private set; }
+
     public async Task SetState(TaskState newState, Exception? exception = null)
     {
         _logger.LogDebug("Changing state from '{State}' to '{newState}' for task '{Name}'", State, newState, Name);
@@ -185,6 +187,7 @@ public class ScheduledTask
         }
 
         TimeSpan waitTime = nextExecutionTime.Value - utcNow;
+        NextOccurrence = nextExecutionTime;
         _logger.LogDebug($"Scheduled {Name} for execution at {nextExecutionTime} (UTC). Time to wait is {waitTime.Days} day(s), {waitTime.Hours} hour(s), {waitTime.Minutes} minute(s) and {waitTime.Seconds} second(s).");
         return waitTime;
     }

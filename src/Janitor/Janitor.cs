@@ -114,7 +114,10 @@ public class Janitor : IJanitor
         configureBuilder(taskInfoBuilder);
         var taskInfo = taskInfoBuilder.Build();
         _scheduledTasks.AddOrUpdate(taskInfo.Name, n => taskInfo, (n, t) => taskInfo);
-        _restartCompletionSource.SetResult();
+        if (_restartCompletionSource.Task.Status != TaskStatus.RanToCompletion)
+        {
+            _restartCompletionSource.SetResult();
+        }
         return this;
     }
 
