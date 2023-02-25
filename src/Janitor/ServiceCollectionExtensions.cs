@@ -11,12 +11,12 @@ public static class ServiceCollectionExtensions
     /// <param name="services"></param>
     /// <param name="config"></param>
     /// <returns></returns>
-    public static IServiceCollection AddJanitor(this IServiceCollection services, Action<IServiceProvider, IJanitor> config)
+    public static IServiceCollection AddJanitor(this IServiceCollection services, Action<IServiceProvider, IJanitor>? config = null)
     {
         services.AddSingleton<IJanitor>(sp =>
         {
             var janitor = new Janitor(sp, sp.GetRequiredService<ILogger<Janitor>>());
-            config(sp, janitor);
+            config?.Invoke(sp, janitor);
             return janitor;
         });
 
