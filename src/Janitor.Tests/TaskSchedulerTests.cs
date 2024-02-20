@@ -127,27 +127,35 @@ public class SchedulerTests : IDisposable
     [Fact]
     public async Task ShouldStopAndStartTask()
     {
+        ConcurrentQueue<TaskState> states = new ConcurrentQueue<TaskState>(new[] { TaskState.ScheduleRequested, TaskState.Scheduled, TaskState.Running, TaskState.StopRequested, TaskState.Stopped, TaskState.ScheduleRequested, TaskState.Scheduled, TaskState.Running });
+
         await WaitAWhile();
         _taskRunner.Schedule(config =>
         {
             config
                 .WithName(TestTaskName)
                 .WithSchedule(new TestSchedule())
+                .WithStateHandler(async (TaskState taskState) =>
+                {
+                    var nextState = states.TryDequeue(out var state) ? state : TaskState.Stopped;
+                    taskState.Should().Be(nextState);
+                })
                 .WithScheduledTask(async (SampleDependency sampleDependency, CancellationToken ct) => SetInvocation(TestTaskName));
         });
-        await WaitAWhile();
+        // await WaitAWhile();
         await _taskRunner.Stop(taskName: TestTaskName);
-        _taskRunner.Single().State.Should().Be(TaskState.StopRequested);
-        await Task.Delay(millisecondsDelay: 200);
-        _taskRunner.Single().State.Should().Be(TaskState.Stopped);
+        // _taskRunner.Single().State.Should().Be(TaskState.StopRequested);
+        // await Task.Delay(millisecondsDelay: 200);
+        //_taskRunner.Single().State.Should().Be(TaskState.Stopped);
         await _taskRunner.Start(taskName: TestTaskName);
-        _taskRunner.Single().State.Should().Be(TaskState.ScheduleRequested);
-        await Task.Delay(millisecondsDelay: 200);
-        _taskRunner.Single().State.Should().Be(TaskState.Scheduled);
-        ResetInvocation(TestTaskName);
+        // _taskRunner.Single().State.Should().Be(TaskState.ScheduleRequested);
+        // await Task.Delay(millisecondsDelay: 200);
+        // _taskRunner.Single().State.Should().Be(TaskState.Scheduled);
+        // ResetInvocation(TestTaskName);
         await WaitAWhile();
-        VerifyInvoked(TestTaskName);
-
+        await WaitAWhile();
+        // VerifyInvoked(TestTaskName);
+        states.Should().BeEmpty();
     }
 
     [Fact]

@@ -91,7 +91,11 @@ public class Janitor : IJanitor
     public async Task Start(string taskName)
     {
         await _scheduledTasks[taskName].SetState(TaskState.ScheduleRequested);
-        _restartCompletionSource.SetResult();
+        if (_restartCompletionSource.Task.Status != TaskStatus.RanToCompletion)
+        {
+            _restartCompletionSource.SetResult();
+        }
+
     }
 
     public async Task Stop(string taskName)
