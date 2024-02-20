@@ -10,7 +10,7 @@ public class ScheduledTask
     private readonly ISchedule _schedule;
     private readonly Delegate _stateHandler;
     private readonly ILogger _logger;
-    private CancellationTokenSource _cancellationTokenSource;
+    private CancellationTokenSource _cancellationTokenSource = new();
 
     public ScheduledTask(string name, Delegate taskToBeScheduled, IServiceProvider serviceProvider, ISchedule schedule, Delegate stateHandler, ILogger logger)
     {
