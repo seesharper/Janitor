@@ -8,14 +8,13 @@ namespace Janitor.Tests;
 
 public class SchedulerTests : IDisposable
 {
-    private CancellationTokenSource _cancellationTokenSource;
-    private IJanitor _taskRunner;
-    private ConcurrentDictionary<string, bool> _invocationMap = new ConcurrentDictionary<string, bool>();
-    private readonly Task _testRunnerTask;
+    private readonly CancellationTokenSource _cancellationTokenSource;
+    private readonly IJanitor _taskRunner;
+    private readonly ConcurrentDictionary<string, bool> _invocationMap = new ConcurrentDictionary<string, bool>();
 
     private const string TestTaskName = "TestTask";
 
-    private List<string> _logMessages = new List<string>();
+    private readonly List<string> _logMessages = new List<string>();
 
     public SchedulerTests()
     {
@@ -30,7 +29,7 @@ public class SchedulerTests : IDisposable
         var serviceProvider = serviceCollection.BuildServiceProvider();
         _cancellationTokenSource = new CancellationTokenSource();
         _taskRunner = serviceProvider.GetRequiredService<IJanitor>();
-        _testRunnerTask = Task.Run(async () => await _taskRunner.Start(_cancellationTokenSource.Token));
+        Task.Run(async () => await _taskRunner.Start(_cancellationTokenSource.Token));
     }
 
     public void Dispose()
@@ -129,7 +128,6 @@ public class SchedulerTests : IDisposable
     {
         ConcurrentQueue<TaskState> states = new ConcurrentQueue<TaskState>(new[] { TaskState.ScheduleRequested, TaskState.Scheduled, TaskState.Running, TaskState.StopRequested, TaskState.Stopped, TaskState.ScheduleRequested, TaskState.Scheduled, TaskState.Running });
 
-        await WaitAWhile();
         _taskRunner.Schedule(config =>
         {
             config
@@ -142,11 +140,12 @@ public class SchedulerTests : IDisposable
                 })
                 .WithScheduledTask(async (SampleDependency sampleDependency, CancellationToken ct) => SetInvocation(TestTaskName));
         });
-        // await WaitAWhile();
+        await WaitAWhile();
         await _taskRunner.Stop(taskName: TestTaskName);
         // _taskRunner.Single().State.Should().Be(TaskState.StopRequested);
         // await Task.Delay(millisecondsDelay: 200);
         //_taskRunner.Single().State.Should().Be(TaskState.Stopped);
+        await WaitAWhile();
         await _taskRunner.Start(taskName: TestTaskName);
         // _taskRunner.Single().State.Should().Be(TaskState.ScheduleRequested);
         // await Task.Delay(millisecondsDelay: 200);

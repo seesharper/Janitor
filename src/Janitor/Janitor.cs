@@ -34,7 +34,7 @@ public class Janitor : IJanitor
             _logger.LogDebug("Main task has been cancelled.");
             foreach (var item in _scheduledTasks)
             {
-                item.Value.Stop();
+                item.Value.Stop().GetAwaiter().GetResult();
             }
             if (_restartCompletionSource.Task.Status != TaskStatus.RanToCompletion)
             {
